@@ -1,90 +1,66 @@
 import hashlib
-import random
 
-# Generate large prime numbers
+# Generate a large prime number
 def generate_prime(bits=1024):
     from sympy import randprime
     return randprime(2**(bits-1), 2**bits)
 
-# Generate RSA Keys
+# Generate RSA key pair (public and private keys)
 def generate_rsa_keys():
-    e = 65537  # Common public exponent
-    p, q = generate_prime(), generate_prime()
-    n = p * q
-    phi = (p-1) * (q-1)
-    d = pow(e, -1, phi)  # Compute modular inverse
-    return (n, e, d)  # Public (n, e), Private (n, d)
+    public_exponent = 65537  # Common public exponent
+    prime_p, prime_q = generate_prime(), generate_prime()  # Generate two large primes
+    modulus = prime_p * prime_q  # Modulus
+    totient = (prime_p - 1) * (prime_q - 1)  # Euler's totient function
+    private_exponent = pow(public_exponent, -1, totient)  # Compute modular inverse of e
+    return (modulus, public_exponent, private_exponent)  # Return public (n, e) and private (n, d) keys
 
-# SHA-256 Hash Function
+# Compute SHA-256 hash of a message
 def sha256(message):
     return hashlib.sha256(message.encode()).digest()  # Returns 32-byte hash
 
-# Mask Generation Function (MGF1 for PSS)
-def mgf1(seed, mask_len):
-    counter = 0
-    output = b""
-    while len(output) < mask_len:
-        counter_bytes = counter.to_bytes(4, byteorder="big")
-        output += hashlib.sha256(seed + counter_bytes).digest()
-        counter += 1
-    return output[:mask_len]
+# Apply PKCS#1 v1.5 padding to the message hash
+def pkcs1_v1_5_pad(message_hash, modulus):
+    encoded_message_length = (modulus.bit_length() + 7) // 8  # Length of the encoded message in bytes
+    padding_bytes = b"\xff" * (encoded_message_length - len(message_hash) - 3)  # Padding bytes
+    return int.from_bytes(b"\x00\x01" + padding_bytes + b"\x00" + message_hash, byteorder="big")
 
-# Apply PSS Padding
-def pss_pad(message_hash, n):
-    em_len = (n.bit_length() + 7) // 8
-    salt = random.randbytes(32)  # Random 32-byte salt
-    m_prime = b"\x00" * 8 + message_hash + salt
-    m_prime_hash = hashlib.sha256(m_prime).digest()
-    ps_len = em_len - len(m_prime_hash) - len(salt) - 2
-    ps = b"\x00" * ps_len
-    db = ps + b"\x01" + salt
-    db_mask = mgf1(m_prime_hash, len(db))
-    masked_db = bytes(x ^ y for x, y in zip(db, db_mask))
-    em = masked_db + m_prime_hash + b"\xbc"
-    return int.from_bytes(em, byteorder="big")
+# Remove PKCS#1 v1.5 padding and extract the message hash
+def pkcs1_v1_5_unpad(signature_as_int, modulus):
+    encoded_message = signature_as_int.to_bytes((modulus.bit_length() + 7) // 8, byteorder="big")
+    padding_end_index = encoded_message.index(b"\x00", 2)  # Find the end of the padding
+    return encoded_message[padding_end_index + 1:]  # Extract and return the message hash
 
-# Remove PSS Padding
-def pss_unpad(signature_int, n):
-    em = signature_int.to_bytes((n.bit_length() + 7) // 8, byteorder="big")
-    masked_db, m_prime_hash, bc = em[:-33], em[-33:-1], em[-1]
-    if bc != 0xbc:
-        return None  # Padding error
-    db_mask = mgf1(m_prime_hash, len(masked_db))
-    db = bytes(x ^ y for x, y in zip(masked_db, db_mask))
-    salt = db[len(db) - 32:]
-    m_prime = b"\x00" * 8 + m_prime_hash + salt
-    return hashlib.sha256(m_prime).digest()
-
-# Sign Message with RSA-PSS
+# Sign a message using the private key
 def sign_message(message, private_key):
-    n, d = private_key
-    message_hash = sha256(message)
-    padded_hash = pss_pad(message_hash, n)
-    return pow(padded_hash, d, n)  # Signature = (padded_hash)^d mod n
+    modulus, private_exponent = private_key
+    message_hash = sha256(message)  # Hash the message
+    padded_message_hash = pkcs1_v1_5_pad(message_hash, modulus)  # Apply padding
+    return pow(padded_message_hash, private_exponent, modulus)  # Signature = (padded_hash)^d mod n
 
-# Verify RSA Signature
+# Verify a signature using the public key
 def verify_signature(message, signature, public_key):
-    n, e = public_key
-    decrypted_int = pow(signature, e, n)  # decrypted_hash = (signature)^e mod n
-    recovered_hash = pss_unpad(decrypted_int, n)
-    return recovered_hash == sha256(message)
+    modulus, public_exponent = public_key
+    message_hash = sha256(message)  # Hash the original message
+    decrypted_signature_as_int = pow(signature, public_exponent, modulus)  # Decrypt the signature
+    recovered_message_hash = pkcs1_v1_5_unpad(decrypted_signature_as_int, modulus)  # Remove padding
+    return recovered_message_hash == message_hash  # Compare hashes
 
-# Main Execution
+# Main execution
 if __name__ == "__main__":
-    print("🔒 Fully Original Standard-Compliant RSA Digital Signature")
+    print("🔒 RSA Digital Signature with PKCS#1 v1.5 Padding")
 
-    # Generate RSA Key Pair
-    n, e, d = generate_rsa_keys()
-    public_key = (n, e)
-    private_key = (n, d)
+    # Generate RSA key pair
+    modulus, public_exponent, private_exponent = generate_rsa_keys()
+    public_key = (modulus, public_exponent)
+    private_key = (modulus, private_exponent)
 
-    # User inputs a message
+    # Input message to sign
     message = input("\nEnter message to sign: ")
 
-    # Signing
+    # Sign the message
     signature = sign_message(message, private_key)
     print(f"\n🔏 Signature: {signature}")
 
-    # Verification
-    is_valid = verify_signature(message, signature, public_key)
-    print("\n✅ Signature is VALID!" if is_valid else "\n❌ Signature is INVALID!")
+    # Verify the signature
+    is_signature_valid = verify_signature(message, signature, public_key)
+    print("\n✅ Signature is VALID!" if is_signature_valid else "\n❌ Signature is INVALID!")

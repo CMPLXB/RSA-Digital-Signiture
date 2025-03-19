@@ -1,5 +1,4 @@
 import hashlib
-import random
 
 # Generate large prime numbers
 def generate_prime(bits=1024):
