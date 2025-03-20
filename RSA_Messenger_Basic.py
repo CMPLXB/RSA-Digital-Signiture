@@ -1,11 +1,5 @@
-from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes
-
-# Generate RSA keys
-def generate_rsa_keys():
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    public_key = private_key.public_key()
-    return private_key, public_key
+from MessangerBasic.RSA_Generate_Keys import generate_rsa_keys  # Import the function
 
 # Hash Message using SHA-256
 def hash_message(message):
@@ -16,25 +10,23 @@ def hash_message(message):
 # Sign Message
 def sign_message(message, private_key):
     hashed = int.from_bytes(hash_message(message), byteorder="big")  # Convert hash to integer
-    n = private_key.public_key().public_numbers().n
-    d = private_key.private_numbers().d
+    d, n = private_key  # Extract private key components
     return pow(hashed, d, n)  # RSA Signature: hash^d mod n
 
 # Verify Signature
 def verify_signature(message, signature, public_key):
     hashed = int.from_bytes(hash_message(message), byteorder="big")  # Hash message again
-    n = public_key.public_numbers().n
-    e = public_key.public_numbers().e
+    e, n = public_key  # Extract public key components
     decrypted_hash = pow(signature, e, n)  # RSA Verification: signature^e mod n
     return decrypted_hash == hashed  # Check if the hashes match
 
 # Main Execution
 if __name__ == "__main__":
-    private_key, public_key = generate_rsa_keys()
+    public_key, private_key = generate_rsa_keys()  # Generate RSA keys
     message = input("\nEnter message to sign: ")
     
-    signature = sign_message(message, private_key)
+    signature = sign_message(message, private_key)  # Sign the message
     print(f"\n🔏 Signature: {signature}")
 
-    is_valid = verify_signature(message, signature, public_key)
+    is_valid = verify_signature(message, signature, public_key)  # Verify the signature
     print("\n✅ Signature is VALID!" if is_valid else "\n❌ Signature is INVALID!")
