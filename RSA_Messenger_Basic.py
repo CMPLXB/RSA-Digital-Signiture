@@ -1,5 +1,5 @@
 from cryptography.hazmat.primitives import hashes
-from MessangerBasic.RSA_Generate_Keys import generate_rsa_keys  # Import the function
+from generateKeys import generate_rsa_keys  # Import the function
 
 # Hash Message using SHA-256
 def hash_message(message):
