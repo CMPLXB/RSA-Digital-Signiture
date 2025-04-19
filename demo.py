@@ -16,20 +16,20 @@ def generate_rsa_keys():
 
 # Hash Message using SHA-256
 def hash_message(message):
-    return int(hashlib.sha256(message.encode()).hexdigest(), 16)
+    return hashlib.sha256(message.encode()).hexdigest()
 
 # Sign Message (RSA Signature)
 def sign_message(message, private_key):
     n, d = private_key
-    hashed = hash_message(message)
+    hashed = int(hash_message(message), 16)
     return pow(hashed, d, n)  # Signature = hash^d mod n
 
 # Verify Signature
 def verify_signature(message, signature, public_key):
     n, e = public_key
-    hashed = hash_message(message)
-    decrypted_hash = pow(signature, e, n)  # decrypted = signature^e mod n
-    return decrypted_hash == hashed
+    hashed = int(hash_message(message), 16)
+    decrypted_hash = pow(signature, e, n)  # Verify = signature^e mod n
+    return decrypted_hash == hashed, hex(decrypted_hash)
 
 # Main Execution
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     public_key = (n, e)
     private_key = (n, d)
     print("\n🔑 RSA Key Pair Generated!")
-    input(" ")
+    input("")
 
     print(f"\nPublic Key: {public_key}")
     input("")
@@ -49,26 +49,47 @@ if __name__ == "__main__":
     print(f"\nPrivate Key: {private_key}")
     input("")
 
-    # Predefined messages
+    # First message with detailed explanation
+    message = "Message 1: Hello, RSA!"
+    print(f"\nMessage: {message}")
+    input("")
+
+    # Hashing the message
+    hashed_message = hash_message(message)
+    print(f"\nHashed Message (SHA-256 in Hex): {hashed_message}")
+    input("")
+
+    # Signing the message
+    signature = sign_message(message, private_key)
+    print(f"\n🔏 Signature (Signed Hash in Hex): {hex(signature)}")
+    input("")
+
+    # Verifying the signature
+    is_valid, decrypted_hash = verify_signature(message, signature, public_key)
+    print(f"\nReceived Message Hash (Hex): {hashed_message}")
+    print(f"Decrypted Hash (from Signature in Hex): {decrypted_hash}")
+    print("\n✅ Signature is VALID!" if is_valid else "\n❌ Signature is INVALID!")
+    input("")
+
+    # Remaining messages with simplified flow
     messages = [
-        "Message 1: Hello, RSA!",
         "Message 2: Cryptography is fun.",
         "Message 3: Secure your data.",
         "Message 4: Digital signatures are powerful.",
         "Message 5: Always verify authenticity."
     ]
 
-    for i, message in enumerate(messages, start=1):
-        print(f"\nSigning {message}")
+    for i, message in enumerate(messages, start=2):
+        print(f"\nMessage: {message}")
         input("")
 
         # Signing
         signature = sign_message(message, private_key)
-        print(f"\n🔏 Signature for {message}: {signature}")
+        print(f"\n🔏 Signature (in Hex): {hex(signature)}")
         input("")
 
         # Verification
-        is_valid = verify_signature(message, signature, public_key)
+        is_valid, _ = verify_signature(message, signature, public_key)
         print("\n✅ Signature is VALID!" if is_valid else "\n❌ Signature is INVALID!")
-        if i < len(messages):
+        if i < len(messages) + 1:
             input("")
