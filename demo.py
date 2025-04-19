@@ -71,12 +71,13 @@ if __name__ == "__main__":
     print("\n✅ Signature is VALID!" if is_valid else "\n❌ Signature is INVALID!")
     input("")
 
-    # Remaining messages with simplified flow
+    # Remaining messages with test cases
     messages = [
-        "Message 2: Cryptography is fun.",
-        "Message 3: Secure your data.",
-        "Message 4: Digital signatures are powerful.",
-        "Message 5: Always verify authenticity."
+        "Message 2: 1234567890",  # Numbers
+        "Message 3: !@#$%^&*()",  # Symbols
+        "Message 4: The quick brown fox jumps over the lazy dog.",  # Full sentence
+        "Message 5: こんにちは世界",  # Unicode (Japanese)
+        "Message 6: 🚀🌟✨🔥",  # Emojis
     ]
 
     for i, message in enumerate(messages, start=2):
